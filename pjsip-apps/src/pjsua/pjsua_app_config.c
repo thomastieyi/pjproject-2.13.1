@@ -55,7 +55,10 @@ static void usage(void)
     puts  ("  --realm=string      Set realm");
     puts  ("  --username=string   Set authentication username");
     puts  ("  --password=string   Set authentication password");
-    puts  ("  --ext.aka.k=string   Set authentication key");
+    puts  ("  --ext-aka-k=string   Set authentication key");
+    puts  ("  --ext-aka-op=string   Set authentication op");
+    puts  ("  --ext-aka-opc=N   Set authentication opc");
+    puts  ("  --ext-aka-amf=string   Set authentication a,f");
     puts  ("  --contact=url       Optionally override the Contact information");
     puts  ("  --contact-params=S  Append the specified parameters S in Contact header");
     puts  ("  --contact-uri-params=S  Append the specified parameters S in Contact URI");
@@ -244,12 +247,14 @@ static void usage(void)
 
 static pj_str_t  HEX32_TO_BYTES(char* hexString){
     int len = strlen(hexString) / 2;
+    PJ_LOG(1,(THIS_FILE, "HEX32_TO_BYTES %d", len));
     unsigned char* byteData = (unsigned char*)malloc(len);
     for (int i = 0; i < len; i++) {
         int index = i * 2;
         sscanf(&hexString[index], "%2hhx", &byteData[i]);
     }
-    pj_str_t byteStr = pj_str(byteData + 2);
+    pj_str_t byteStr = pj_str(byteData);
+    byteStr.slen = len;
 
     return byteStr;
 
@@ -381,7 +386,8 @@ static pj_status_t parse_args(int argc, char *argv[],
            OPT_LOCAL_PORT, OPT_IP_ADDR, OPT_PROXY, OPT_OUTBOUND_PROXY,
            OPT_REGISTRAR, OPT_REG_TIMEOUT, OPT_PUBLISH, OPT_ID, OPT_CONTACT,
            OPT_BOUND_ADDR, OPT_CONTACT_PARAMS, OPT_CONTACT_URI_PARAMS,
-           OPT_100REL, OPT_USE_IMS, OPT_REALM, OPT_USERNAME, OPT_PASSWORD, OPT_EXT_AKA_K,
+           OPT_100REL, OPT_USE_IMS, OPT_REALM, OPT_USERNAME, OPT_PASSWORD, 
+           OPT_EXT_AKA_K, OPT_EXT_AKA_OP, OPT_EXT_AKA_OPC, OPT_EXT_AKA_AMF,
            OPT_REG_RETRY_INTERVAL, OPT_REG_USE_PROXY,
            OPT_MWI, OPT_NAMESERVER, OPT_STUN_SRV, OPT_UPNP, OPT_OUTB_RID,
            OPT_ADD_BUDDY, OPT_OFFER_X_MS_MSG, OPT_NO_PRESENCE,
@@ -461,6 +467,9 @@ static pj_status_t parse_args(int argc, char *argv[],
         { "username",   1, 0, OPT_USERNAME},
         { "password",   1, 0, OPT_PASSWORD},
         { "ext-aka-k",   1, 0, OPT_EXT_AKA_K},
+        { "ext-aka-op",   1, 0, OPT_EXT_AKA_OP},
+        { "ext-aka-is-opc",   1, 0, OPT_EXT_AKA_OPC},
+        { "ext-aka-amf",   1, 0, OPT_EXT_AKA_AMF},
         { "rereg-delay",1, 0, OPT_REG_RETRY_INTERVAL},
         { "reg-use-proxy", 1, 0, OPT_REG_USE_PROXY},
         { "nameserver", 1, 0, OPT_NAMESERVER},
@@ -919,13 +928,19 @@ static pj_status_t parse_args(int argc, char *argv[],
             cur_acc->cred_info[cur_acc->cred_count].data_type = PJSIP_CRED_DATA_PLAIN_PASSWD;
             cur_acc->cred_info[cur_acc->cred_count].data = pj_str(pj_optarg);
 #if PJSIP_HAS_DIGEST_AKA_AUTH
-            cur_acc->cred_info[cur_acc->cred_count].data = pj_str(pj_optarg);
+            // cur_acc->cred_info[cur_acc->cred_count].data = pj_str(pj_optarg);
         case OPT_EXT_AKA_K:   /* authentication password */
             // cur_acc->cred_info[cur_acc->cred_count].data_type = PJSIP_CRED_DATA_PLAIN_PASSWD;
             cur_acc->cred_info[cur_acc->cred_count].data_type |= PJSIP_CRED_DATA_EXT_AKA;
-            cur_acc->cred_info[cur_acc->cred_count].ext.aka.k = HEX32_TO_BYTES("465B5CE8B199B49FAA5F0A2EE238A6BC");
-            cur_acc->cred_info[cur_acc->cred_count].ext.aka.amf = HEX32_TO_BYTES("8000");
-            cur_acc->cred_info[cur_acc->cred_count].ext.aka.op = HEX32_TO_BYTES("E8ED289DEBA952E4283B54E88E6183CA");
+            // cur_acc->cred_info[cur_acc->cred_count].data = pj_str("465B5CE8B199B49FAA5F0A2EE238A6BC");
+            cur_acc->cred_info[cur_acc->cred_count].ext.aka.k = HEX32_TO_BYTES(pj_optarg);
+        case OPT_EXT_AKA_OP:   /* authentication password */
+            cur_acc->cred_info[cur_acc->cred_count].ext.aka.op = HEX32_TO_BYTES(pj_optarg);
+        case OPT_EXT_AKA_OPC:   /* authentication password */
+            cur_acc->cred_info[cur_acc->cred_count].ext.aka.is_op =(int)pj_strtoul(pj_cstr(&tmp, pj_optarg));;  
+        case OPT_EXT_AKA_AMF:   /* authentication password */     
+            cur_acc->cred_info[cur_acc->cred_count].ext.aka.amf = HEX32_TO_BYTES(pj_optarg);
+            // cur_acc->cred_info[cur_acc->cred_count].ext.aka.op = HEX32_TO_BYTES("e8ed289deba952e4283b54e88e6183ca");
             cur_acc->cred_info[cur_acc->cred_count].ext.aka.cb = &pjsip_auth_create_aka_response;
 #endif
             break;

@@ -96,7 +96,8 @@ typedef pj_status_t (*pjsip_cred_cb)(pj_pool_t *pool,
                                      const pjsip_digest_challenge *chal,
                                      const pjsip_cred_info *cred,
                                      const pj_str_t *method,
-                                     pjsip_digest_credential *auth);
+                                     pjsip_digest_credential *auth,
+                                     pj_bool_t is_op);
 
 
 /** 
@@ -129,6 +130,7 @@ struct pjsip_cred_info
         struct {
             pj_str_t      k;    /**< Permanent subscriber key.          */
             pj_str_t      op;   /**< Operator variant key.              */
+            int      is_op;   /**< Operator variant key.              */
             pj_str_t      amf;  /**< Authentication Management Field    */
             pjsip_cred_cb cb;   /**< Callback to create AKA digest.     */
         } aka;

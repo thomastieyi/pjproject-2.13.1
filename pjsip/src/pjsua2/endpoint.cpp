@@ -2666,7 +2666,7 @@ pj_status_t Endpoint::on_auth_create_aka_response_callback(pj_pool_t *pool,
     }
 #if PJSIP_HAS_DIGEST_AKA_AUTH
    else if (status == PJ_ENOTSUP) {
-            status = pjsip_auth_create_aka_response(pool, chal, cred, method, auth);
+            status = pjsip_auth_create_aka_response(pool, chal, cred, method, auth, true);
     }
 #endif
     return status;

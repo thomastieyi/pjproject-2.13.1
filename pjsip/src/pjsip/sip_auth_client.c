@@ -522,11 +522,10 @@ static pj_status_t respond_digest( pj_pool_t *pool,
 
     if (chal->qop.slen == 0) {
         /* Server doesn't require quality of protection. */
-
         if ((cred_info->data_type & EXT_MASK) == PJSIP_CRED_DATA_EXT_AKA) {
             /* Call application callback to create the response digest */
             return (*cred_info->ext.aka.cb)(pool, chal, cred_info,
-                                            method, cred);
+                                            method, cred,0 );
         }
         else {
             /* Convert digest to string and store in chal->response. */
@@ -562,7 +561,7 @@ static pj_status_t respond_digest( pj_pool_t *pool,
             PJ_LOG(4,(THIS_FILE, "Call application callback to create the response digest begin"));
             /* Call application callback to create the response digest */
             return (*cred_info->ext.aka.cb)(pool, chal, cred_info,
-                                            method, cred);
+                                            method, cred, 0);
             PJ_LOG(4,(THIS_FILE, "Call application callback to create the response digest end"));
         }
         else {
@@ -833,6 +832,7 @@ PJ_DEF(pj_status_t) pjsip_auth_clt_set_credentials( pjsip_auth_clt_sess *sess,
              */
             if ((c[i].data_type & EXT_MASK) == PJSIP_CRED_DATA_EXT_AKA) {
 
+                
 #if !PJSIP_HAS_DIGEST_AKA_AUTH
                 if (!PJSIP_HAS_DIGEST_AKA_AUTH) {
                     pj_assert(!"PJSIP_HAS_DIGEST_AKA_AUTH is not enabled");
@@ -846,7 +846,7 @@ PJ_DEF(pj_status_t) pjsip_auth_clt_set_credentials( pjsip_auth_clt_sess *sess,
                 /* Verify K len */
                 PJ_ASSERT_RETURN(c[i].ext.aka.k.slen <= PJSIP_AKA_KLEN,
                                  PJSIP_EAUTHINAKACRED);
-
+                AUTH_TRACE_((THIS_FILE, "c[i].ext.aka.op.slen %d", c[i].ext.aka.op.slen));
                 /* Verify OP len */
                 PJ_ASSERT_RETURN(c[i].ext.aka.op.slen <= PJSIP_AKA_OPLEN,
                                  PJSIP_EAUTHINAKACRED);

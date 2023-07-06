@@ -39,7 +39,9 @@ pjsip_auth_create_aka_response(
     const pjsip_digest_challenge *chal,
     const pjsip_cred_info *cred,
     const pj_str_t *method,
-    pjsip_digest_credential *auth)
+    pjsip_digest_credential *auth,
+    pj_bool_t isOP
+    )
 {
     pj_str_t nonce_bin;
     int aka_version;
@@ -119,7 +121,7 @@ pjsip_auth_create_aka_response(
     pj_bzero(k, sizeof(k));
     pj_bzero(op, sizeof(op));
     pj_bzero(amf, sizeof(amf));
-
+    
     if (cred->ext.aka.k.slen)
         pj_memcpy(k, cred->ext.aka.k.ptr, cred->ext.aka.k.slen);
     if (cred->ext.aka.op.slen)
@@ -130,19 +132,30 @@ pjsip_auth_create_aka_response(
     /* Given key K and random challenge RAND, compute response RES,
      * confidentiality key CK, integrity key IK and anonymity key AK.
      */
-    f2345(k, chal_rand, res, ck, ik, ak, op);
+    if(isOP)
+        f2345(k, chal_rand, res, ck, ik, ak, op);
+    else
+        f2345_opc(k, chal_rand, res, ck, ik, ak, op);
 
     /* Compute sequence number SQN */
     for (i = 0; i < PJSIP_AKA_SQNLEN; ++i)
         sqn[i] = (pj_uint8_t)(chal_sqnxoraka[i] ^ ak[i]);
 
+        PJ_LOG(4, (THIS_FILE, "%d",isOP));
+
     /* Verify MAC in the challenge */
     /* Compute XMAC */
-    f1(k, chal_rand, sqn, amf, xmac, op);
+    if(isOP)
+        f1(k, chal_rand, sqn, amf, xmac, op);
+    else
+        f1_opc(k, chal_rand, sqn, amf, xmac, op);
 
     if (pj_memcmp(chal_mac, xmac, PJSIP_AKA_MACLEN) != 0)
     {
-        PJ_LOG(4, (THIS_FILE, "PJSIP_EAUTHINNONCE algorithm 4"));
+        // PJ_LOG(4, (THIS_FILE, "cred->ext.aka.k.ptr %s %d",cred->ext.aka.k.ptr, cred->ext.aka.k.slen));
+        // PJ_LOG(4, (THIS_FILE, "cred->ext.aka.op.ptr %s %d",cred->ext.aka.op.ptr, cred->ext.aka.op.slen));
+        // PJ_LOG(4, (THIS_FILE, "cred->ext.aka.amf.ptr %s %d",cred->ext.aka.amf.ptr, cred->ext.aka.amf.slen));
+        
 
         return PJSIP_EAUTHINNONCE;
     }

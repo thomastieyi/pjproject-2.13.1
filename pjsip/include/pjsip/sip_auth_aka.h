@@ -116,7 +116,7 @@ PJ_BEGIN_DECL
 /**
  * Length of Authentication Management Field (AMF) in bytes.
  */
-#define PJSIP_AKA_AMFLEN        4
+#define PJSIP_AKA_AMFLEN        2
 
 /**
  * Length of AUTN in bytes.
@@ -196,7 +196,8 @@ PJ_DECL(pj_status_t) pjsip_auth_create_aka_response(
                                              const pjsip_digest_challenge*chal,
                                              const pjsip_cred_info *cred,
                                              const pj_str_t *method,
-                                             pjsip_digest_credential *auth);
+                                             pjsip_digest_credential *auth,
+                                             pj_bool_t isOP);
 
 
 /**
