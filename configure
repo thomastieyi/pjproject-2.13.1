@@ -1,0 +1,10 @@
+#!/bin/sh
+export CFLAGS="-mfpmath=387"
+export CXXFLAGS="-mfpmath=387"
+
+./aconfigure "$@"
+
+# Note:
+# if you're looking for the old configure script, it has been renamed
+# to configure-legacy
+
