@@ -1,0 +1,78 @@
+voAMRWBEnc.lo: amrwbenc/src/voAMRWBEnc.c C:/msys64/ucrt64/include/stdio.h \
+ C:/msys64/ucrt64/include/corecrt_stdio_config.h \
+ C:/msys64/ucrt64/include/corecrt.h C:/msys64/ucrt64/include/_mingw.h \
+ C:/msys64/ucrt64/include/_mingw_mac.h \
+ C:/msys64/ucrt64/include/_mingw_secapi.h \
+ C:/msys64/ucrt64/include/vadefs.h \
+ C:/msys64/ucrt64/include/sdks/_mingw_ddk.h \
+ C:/msys64/ucrt64/include/_mingw_off_t.h \
+ C:/msys64/ucrt64/include/swprintf.inl \
+ C:/msys64/ucrt64/include/sec_api/stdio_s.h \
+ C:/msys64/ucrt64/include/stdlib.h \
+ C:/msys64/ucrt64/include/corecrt_wstdlib.h \
+ C:/msys64/ucrt64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/limits.h \
+ C:/msys64/ucrt64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/syslimits.h \
+ C:/msys64/ucrt64/include/limits.h C:/msys64/ucrt64/include/crtdefs.h \
+ C:/msys64/ucrt64/include/sec_api/stdlib_s.h \
+ C:/msys64/ucrt64/include/malloc.h \
+ C:/msys64/ucrt64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/mm_malloc.h \
+ C:/msys64/ucrt64/include/errno.h amrwbenc/inc/typedef.h \
+ amrwbenc/inc/typedefs.h \
+ C:/msys64/ucrt64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/float.h \
+ C:/msys64/ucrt64/include/float.h amrwbenc/inc/basic_op.h \
+ amrwbenc/inc/typedef.h amrwbenc/inc/oper_32b.h amrwbenc/inc/math_op.h \
+ amrwbenc/inc/cnst.h amrwbenc/inc/acelp.h amrwbenc/inc/cod_main.h \
+ amrwbenc/inc/cnst.h amrwbenc/inc/wb_vad.h amrwbenc/inc/wb_vad_c.h \
+ common/include/voMem.h common/include/voIndex.h common/include/voType.h \
+ amrwbenc/inc/dtx.h amrwbenc/inc/stream.h common/include/voAMRWB.h \
+ common/include/voAudio.h common/include/voMem.h amrwbenc/inc/cod_main.h \
+ amrwbenc/inc/bits.h amrwbenc/inc/main.h amrwbenc/inc/mem_align.h \
+ common/include/cmnMemory.h
+C:/msys64/ucrt64/include/stdio.h:
+C:/msys64/ucrt64/include/corecrt_stdio_config.h:
+C:/msys64/ucrt64/include/corecrt.h:
+C:/msys64/ucrt64/include/_mingw.h:
+C:/msys64/ucrt64/include/_mingw_mac.h:
+C:/msys64/ucrt64/include/_mingw_secapi.h:
+C:/msys64/ucrt64/include/vadefs.h:
+C:/msys64/ucrt64/include/sdks/_mingw_ddk.h:
+C:/msys64/ucrt64/include/_mingw_off_t.h:
+C:/msys64/ucrt64/include/swprintf.inl:
+C:/msys64/ucrt64/include/sec_api/stdio_s.h:
+C:/msys64/ucrt64/include/stdlib.h:
+C:/msys64/ucrt64/include/corecrt_wstdlib.h:
+C:/msys64/ucrt64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/limits.h:
+C:/msys64/ucrt64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/syslimits.h:
+C:/msys64/ucrt64/include/limits.h:
+C:/msys64/ucrt64/include/crtdefs.h:
+C:/msys64/ucrt64/include/sec_api/stdlib_s.h:
+C:/msys64/ucrt64/include/malloc.h:
+C:/msys64/ucrt64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/mm_malloc.h:
+C:/msys64/ucrt64/include/errno.h:
+amrwbenc/inc/typedef.h:
+amrwbenc/inc/typedefs.h:
+C:/msys64/ucrt64/lib/gcc/x86_64-w64-mingw32/13.1.0/include/float.h:
+C:/msys64/ucrt64/include/float.h:
+amrwbenc/inc/basic_op.h:
+amrwbenc/inc/typedef.h:
+amrwbenc/inc/oper_32b.h:
+amrwbenc/inc/math_op.h:
+amrwbenc/inc/cnst.h:
+amrwbenc/inc/acelp.h:
+amrwbenc/inc/cod_main.h:
+amrwbenc/inc/cnst.h:
+amrwbenc/inc/wb_vad.h:
+amrwbenc/inc/wb_vad_c.h:
+common/include/voMem.h:
+common/include/voIndex.h:
+common/include/voType.h:
+amrwbenc/inc/dtx.h:
+amrwbenc/inc/stream.h:
+common/include/voAMRWB.h:
+common/include/voAudio.h:
+common/include/voMem.h:
+amrwbenc/inc/cod_main.h:
+amrwbenc/inc/bits.h:
+amrwbenc/inc/main.h:
+amrwbenc/inc/mem_align.h:
+common/include/cmnMemory.h:

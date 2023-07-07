@@ -3,7 +3,12 @@ lib/
 bin/
 output/
 tmp/
-
+*.o
+opencore-amr-0.1.6/amrnb/.deps/*
+opencore-amr-0.1.6/amrwb/.deps/*
+opencore-amr-0.1.6/amrwb/.libs/*
+opencore-amr-0.1.6/amrnb/.libs/*
+*.lo
 # VS stuff
 *.ncb
 *.suo

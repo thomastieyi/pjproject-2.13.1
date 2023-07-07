@@ -104,7 +104,7 @@
     <InstSet Condition="$(Platform)==x64">SSE</InstSet>
     <InstSet Condition="$(Platform)==ARM">NEON</InstSet>
     <InstSet Condition="$(Platform)==ARM64">NEON</InstSet>
-  </PropertyGroup>    
+  </PropertyGroup>
   <ItemGroup>
     <ClInclude Include="..\..\webrtc_aec3\src\absl\base\config.h" />
     <ClInclude Include="..\..\webrtc_aec3\src\api\audio\echo_control.h" />
@@ -268,6 +268,7 @@
     <RootNamespace>libwebrtc_aec3</RootNamespace>
     <!-- Specific UWP property -->
     <DefaultLanguage>en-US</DefaultLanguage>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release-Static|Win32'" Label="Configuration">
@@ -415,7 +416,7 @@
   </PropertyGroup>
   <!-- Override the PlatformToolset -->
   <PropertyGroup>
-    <PlatformToolset>$(BuildToolset)</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <CharacterSet Condition="'$(API_Family)'!='WinDesktop'">
     </CharacterSet>
   </PropertyGroup>
