@@ -379,7 +379,7 @@
  * Default: 0
  */
 #ifndef PJMEDIA_HAS_OPENCORE_AMRNB_CODEC
-#   define PJMEDIA_HAS_OPENCORE_AMRNB_CODEC     0
+#   define PJMEDIA_HAS_OPENCORE_AMRNB_CODEC     1
 #endif
 
 /**
@@ -389,7 +389,7 @@
  * Default: 0
  */
 #ifndef PJMEDIA_HAS_OPENCORE_AMRWB_CODEC
-#   define PJMEDIA_HAS_OPENCORE_AMRWB_CODEC     0
+#   define PJMEDIA_HAS_OPENCORE_AMRWB_CODEC     1
 #endif
 
 /**

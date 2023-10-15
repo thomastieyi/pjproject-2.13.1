@@ -1,6 +1,6 @@
 #!/bin/sh
-export CFLAGS="-mfpmath=387"
-export CXXFLAGS="-mfpmath=387"
+# export CFLAGS="-mfpmath=387"
+# export CXXFLAGS="-mfpmath=387"
 
 ./aconfigure "$@"
 
