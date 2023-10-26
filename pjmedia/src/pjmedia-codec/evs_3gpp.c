@@ -18,8 +18,23 @@
  */
 
 /* 
- * AMR codec implementation with OpenCORE AMR library
+ * EVS codec implementation with 3GPP EVS library
  */
+
+#undef NO_DATA                          /* already defined in <netdb.h> */
+#include <3gpp-evs/cnst.h>              /* for MAX_BITS_PER_FRAME, etc */
+#include <3gpp-evs/prot.h>              /* for amr_wb_enc, etc */
+#include <3gpp-evs/stat_com.h>          /* for FRAMEMODE_NORMAL */
+#include <3gpp-evs/typedef.h>           /* for UWord8, UWord16, Word16 */
+#include <3gpp-evs/mime.h>              /* for AMRWB_IOmode2rate, etc */
+#include <3gpp-evs/evs.h>              /* for AMRWB_IOmode2rate, etc */
+/* mime.h must come last because typedef.h (Word16, Word32) missing */
+
+#define BUFFER_SAMPLES 5760
+#define BUFFER_BYTES   (MAX_BITS_PER_FRAME + 7) / 8
+#define	EVS_SAMPLES    320
+
+
 #include <pjmedia-codec/g722.h>
 #include <pjmedia-codec/amr_sdp_match.h>
 #include <pjmedia/codec.h>
@@ -60,7 +75,7 @@
 #include <pjmedia-codec/amr_helper.h>
 #include <pjmedia-codec/opencore_amr.h>
 
-#define THIS_FILE "opencore_amr.c"
+#define THIS_FILE "evs_3gpp.c"
 
 /* Tracing */
 #define PJ_TRACE    0
@@ -77,6 +92,26 @@
 #define FRAME_LENGTH_MS     20
 
 
+struct evs_coder_pvt {
+	Encoder_State *encoder;
+	Decoder_State *decoder;
+	short buf[BUFFER_SAMPLES];
+	float con[BUFFER_BYTES];
+	unsigned char fra[BUFFER_BYTES];
+	Indice ind_list[MAX_NUM_INDICES];
+};
+
+/* 
+ * This function takes a pj_str_t string and two pointers to floats.
+ * It parses the string for two float numbers separated by a '-' character and stores them
+ * in the memory locations pointed to by the br1 and br2 pointers.
+ * 
+ * @param pjstr: a pj_str_t string to parse for float numbers.
+ * @param br1: pointer to a float where the first parsed number will be stored.
+ * @param br2: pointer to a float where the second parsed number will be stored.
+ */
+static void get_floats(pj_str_t pjstr, float *br1, float *br2);
+
 /* Prototypes for AMR factory */
 static pj_status_t amr_test_alloc(pjmedia_codec_factory *factory, 
                                    const pjmedia_codec_info *id );
@@ -91,6 +126,24 @@ static pj_status_t amr_alloc_codec(pjmedia_codec_factory *factory,
                                     pjmedia_codec **p_codec);
 static pj_status_t amr_dealloc_codec(pjmedia_codec_factory *factory, 
                                       pjmedia_codec *codec );
+
+
+/* Prototypes for EVS factory */
+static pj_status_t evs_test_alloc(pjmedia_codec_factory *factory, 
+                                   const pjmedia_codec_info *id );
+static pj_status_t evs_default_attr(pjmedia_codec_factory *factory, 
+                                     const pjmedia_codec_info *id, 
+                                     pjmedia_codec_param *attr );
+static pj_status_t evs_enum_codecs(pjmedia_codec_factory *factory, 
+                                    unsigned *count, 
+                                    pjmedia_codec_info codecs[]);
+static pj_status_t evs_alloc_codec(pjmedia_codec_factory *factory, 
+                                    const pjmedia_codec_info *id, 
+                                    pjmedia_codec **p_codec);
+static pj_status_t evs_dealloc_codec(pjmedia_codec_factory *factory, 
+                                      pjmedia_codec *codec );
+
+
 
 /* Prototypes for AMR implementation. */
 static pj_status_t  amr_codec_init(pjmedia_codec *codec, 
@@ -118,7 +171,31 @@ static pj_status_t  amr_codec_recover(pjmedia_codec *codec,
                                       unsigned output_buf_len,
                                       struct pjmedia_frame *output);
 
-
+/* Prototypes for EVS implementation. */
+static pj_status_t  evs_codec_init(pjmedia_codec *codec, 
+                                    pj_pool_t *pool );
+static pj_status_t  evs_codec_open(pjmedia_codec *codec, 
+                                    pjmedia_codec_param *attr );
+static pj_status_t  evs_ccodec_close(pjmedia_codec *codec );
+static pj_status_t  evs_ccodec_modify(pjmedia_codec *codec, 
+                                      const pjmedia_codec_param *attr );
+static pj_status_t  evs_codec_parse(pjmedia_codec *codec,
+                                     void *pkt,
+                                     pj_size_t pkt_size,
+                                     const pj_timestamp *ts,
+                                     unsigned *frame_cnt,
+                                     pjmedia_frame frames[]);
+static pj_status_t  evs_ccodec_encode(pjmedia_codec *codec, 
+                                      const struct pjmedia_frame *input,
+                                      unsigned output_buf_len, 
+                                      struct pjmedia_frame *output);
+static pj_status_t  evs_ccodec_decode(pjmedia_codec *codec, 
+                                      const struct pjmedia_frame *input,
+                                      unsigned output_buf_len, 
+                                      struct pjmedia_frame *output);
+static pj_status_t  evs_ccodec_recover(pjmedia_codec *codec,
+                                      unsigned output_buf_len,
+                                      struct pjmedia_frame *output);
 
 /* Definition for AMR codec operations. */
 static pjmedia_codec_op amr_op = 
@@ -173,12 +250,160 @@ struct amr_data
     pj_timestamp         last_tx;
 };
 
+/* EVS codec private data. */
+struct evs_data
+{
+    pj_pool_t           *pool;
+    unsigned             clock_rate;
+    void                *encoder;
+    void                *decoder;
+    pj_bool_t            plc_enabled;
+    pj_bool_t            vad_enabled;
+    int                  enc_mode;
+    evs_attr             enc_setting;
+    evs_attr             dec_setting;
+#if USE_PJMEDIA_PLC
+    pjmedia_plc         *plc;
+#endif
+    pj_timestamp         last_tx;
+};
+
 /* Index for AMR tables. */
 enum
 {
     IDX_AMR_NB, /* Index for narrowband.    */
     IDX_AMR_WB  /* Index for wideband.      */
 };
+
+static struct evs_attr default_evs_attr = {
+	.evs_mode_switch        = -1, /* primary mode                     */
+	.hf_only                = -1, /* all formats                      */
+	.dtx                    =  2, /* on                               */
+	.dtx_send               =  1, /* do no change                     */
+	.dtx_recv               =  2, /* on                               */
+	.max_red                = -1, /* no redundancy limit              */
+	.cmr                    =  0, /* might be in payload              */
+	.cmr_included           =  0, /* CMR not in SDP                   */
+	.br                     =  0, /* inclusion depends                */
+	.br_send                =  0x1ffe, /* all bit-rates               */
+	.br_recv                =  0x1ffe, /* all bit-rates               */
+	.bw                     =  0, /* inclusion depends                */
+	.bw_send                =  0x1e, /* all bandwidths                */
+	.bw_recv                =  0x1e, /* all bandwidths                */
+	.ch_send                =  0, /* mono                             */
+	.ch_recv                =  0, /* mono                             */
+	.ch_aw_send             =  7, /* MAX_RF_FEC_OFFSET; do not change */
+	.ch_aw_recv             =  0, /* not at start                     */
+	.mode_set               =  0, /* all modes                        */
+	.mode_change_period     =  0, /* not specified                    */
+	.mode_change_neighbor   =  0, /* change to any                    */
+};
+/* 
+ * This function takes a float number representing the bitrate and returns the corresponding
+ * bit value according to the specified ranges. The function assumes a specific range mapping 
+ * for the bit values.
+ * 
+ * @param br: the float number representing the bitrate.
+ * @return unsigned int: the corresponding bit value.
+ */
+unsigned int evs_parse_sdp_fmtp_br_bit(float br);
+
+
+/* 
+ * This function takes two float numbers representing bit rates (br1 and br2) and returns an 
+ * unsigned integer representing the bit range. The function calculates the bit range by calling 
+ * the evs_parse_sdp_fmtp_br_bit function for each bit rate and setting the corresponding bits 
+ * in the result variable. If br2 is zero, the function calculates the bit range starting from 
+ * the bit rate br1 and ending at the same bit rate. If br2 is not zero, the function calculates 
+ * the bit range starting from the bit rate br1 and ending at the bit rate br2.
+ * 
+ * @param br1: the first float number representing the bit rate.
+ * @param br2: the second float number representing the bit rate.
+ * @return unsigned int: the bit range represented as an unsigned integer.
+ */
+unsigned int evs_parse_sdp_fmtp_br(float br1, float br2);
+
+/* 
+ * This function takes a pj_str_t string and returns an unsigned integer representing
+ * the bit value corresponding to the given string. The function compares the string with
+ * predefined values and returns the corresponding bit value based on the comparison result.
+ * If the string does not match any predefined values, a default bit value is returned.
+ * 
+ * @param res: the pj_str_t string to compare with predefined values.
+ * @return unsigned int: the corresponding bit value.
+ */
+unsigned int evs_parse_sdp_fmtp_bw(pj_str_t res);
+float evs_generate_sdp_fmtp_br_bit(unsigned int bit);
+float evs_generate_sdp_fmtp_br(unsigned int br, float *br2);
+const char *evs_generate_sdp_fmtp_bw(unsigned int bw);
+
+
+unsigned int evs_parse_sdp_fmtp_br_bit(float br)
+{
+	if (br <= 5.9f) {
+		return 1;
+	} else if (br <=  7.2f) {
+		return 2;
+	} else if (br <=  8.0f) {
+		return 3;
+	} else if (br <=  9.7f) {
+		return 4;
+	} else if (br <= 13.2f) {
+		return 5;
+	} else if (br <= 16.4f) {
+		return 6;
+	} else if (br <= 24.4f) {
+		return 7;
+	} else if (br <= 32.0f) {
+		return 8;
+	} else if (br <= 48.0f) {
+		return 9;
+	} else if (br <= 64.0f) {
+		return 10;
+	} else if (br <= 96.0f) {
+		return 11;
+	} else { /* 128.0f */
+		return 12;
+	}
+}
+
+unsigned int evs_parse_sdp_fmtp_br(float br1, float br2)
+{
+	unsigned int i, end;
+	unsigned int res = 0;
+	unsigned int start = evs_parse_sdp_fmtp_br_bit(br1);
+
+	if (br2) {
+		end = evs_parse_sdp_fmtp_br_bit(br2);
+	} else {
+		end = start;
+	}
+	for (i = start; i <= end; i = i + 1) {
+		res |= (1 << i);
+	}
+
+	return res;
+}
+
+unsigned int evs_parse_sdp_fmtp_bw(pj_str_t res) 
+{
+    if (0 == pj_stricmp2(&res, "nb-swb")) {
+        return 0x0e;
+    } else if (0 == pj_stricmp2(&res, "nb-wb")) {
+        return 0x06;
+    } else if (0 == pj_stricmp2(&res, "fb")) {
+        return 0x10;
+    } else if (0 == pj_stricmp2(&res, "swb")) {
+        return 0x08;
+    } else if (0 == pj_stricmp2(&res, "wb")) {
+        return 0x04;
+    } else if (0 == pj_stricmp2(&res, "nb")) {
+        return 0x02;
+    } else { /* nb-fb */
+        return 0x1e;
+    }
+}
+
 
 static pjmedia_codec_amr_config def_config[2] =
 {{ /* AMR-NB */
@@ -198,6 +423,33 @@ static const unsigned amr_bitrates_size[2] =
     PJ_ARRAY_SIZE(pjmedia_codec_amrnb_bitrates),
     PJ_ARRAY_SIZE(pjmedia_codec_amrwb_bitrates)
 };
+
+
+static void get_floats(pj_str_t pjstr, float *br1, float *br2) 
+{
+    pj_str_t tok;
+    pj_str_t delim;
+    pj_ssize_t start_idx = 0;
+    pj_ssize_t next_idx;
+
+    delim.ptr = "-";
+    delim.slen = 1;
+
+    next_idx = pj_strtok(&pjstr, &delim, &tok, start_idx);
+
+    if (next_idx < pjstr.slen) 
+    {
+        *br1 = pj_strtof(&tok);
+        start_idx = next_idx + delim.slen;
+    }
+
+    if (start_idx < pjstr.slen) {
+        tok.ptr = pjstr.ptr + start_idx;
+        tok.slen = pjstr.slen - start_idx;
+        *br2 = pj_strtof(&tok);
+    }
+
+}
 
 
 /*
@@ -515,6 +767,57 @@ static pj_status_t amr_default_attr( pjmedia_codec_factory *factory,
 }
 
 
+
+/*
+ * Generate default attribute.
+ * a=fmtp:127 evs-mode-switch=1;max-red=0;mode-change-capability=2
+ * a=rtpmap:98 AMR-WB/16000/1
+ * a=fmtp:98 mode-change-capability=2;octet-align=0;max-red=0
+ * 
+ * a=rtpmap:97 AMR/8000/1
+ * a=fmtp:97 mode-change-capability=2;octet-align=0;max-red=0
+ * a=rtpmap:105 telephone-event/16000
+ * a=fmtp:105 0-15
+ * a=rtpmap:100 telephone-event/8000
+ * a=fmtp:100 0-15
+ * a=sendrecv
+ * a=rtcp:49001
+ * a=ptime:20
+ */
+static pj_status_t evs_default_attr( pjmedia_codec_factory *factory, 
+                                     const pjmedia_codec_info *id, 
+                                     pjmedia_codec_param *attr )
+{
+    unsigned idx;
+    
+    PJ_UNUSED_ARG(factory);
+
+    idx = (id->clock_rate <= 8000? IDX_AMR_NB: IDX_AMR_WB);
+    pj_bzero(attr, sizeof(pjmedia_codec_param));
+    attr->info.clock_rate = (id->clock_rate <= 8000? 8000: 16000);
+    attr->info.channel_cnt = 1;
+    attr->info.avg_bps = def_config[idx].bitrate;
+    attr->info.max_bps = amr_bitrates[idx][amr_bitrates_size[idx]-1];
+    attr->info.pcm_bits_per_sample = 16;
+    attr->info.frm_ptime = 20;
+    attr->info.pt = (pj_uint8_t)id->pt;
+
+    attr->setting.frm_per_pkt = 1;
+    attr->setting.vad = 1;
+    attr->setting.plc = 1;
+
+    if (def_config[idx].octet_align) {
+        attr->setting.dec_fmtp.cnt = 1;
+        attr->setting.dec_fmtp.param[0].name = pj_str("octet-align");
+        attr->setting.dec_fmtp.param[0].val = pj_str("1");
+    }
+
+    /* Default all other flag bits disabled. */
+
+    return PJ_SUCCESS;
+}
+
+
 /*
  * Enum codecs supported by this factory (i.e. AMR-NB and AMR-WB).
  */
@@ -627,6 +930,18 @@ static pj_status_t amr_codec_init( pjmedia_codec *codec,
     return PJ_SUCCESS;
 }
 
+/*
+ * Init EVS codec.
+ */
+static pj_status_t evs_codec_init( pjmedia_codec *codec, 
+                                   pj_pool_t *pool )
+{
+    PJ_UNUSED_ARG(codec);
+    PJ_UNUSED_ARG(pool);
+    return PJ_SUCCESS;
+}
+
+
 
 /*
  * Open codec.
@@ -646,7 +961,7 @@ static pj_status_t amr_codec_open( pjmedia_codec *codec,
     PJ_ASSERT_RETURN(amr_data != NULL, PJ_EINVALIDOP);
 
     idx = (attr->info.clock_rate <= 8000? IDX_AMR_NB: IDX_AMR_WB);
-    enc_mode = pjmedia_codec_amr_get_mode(attr->info.avg_bps);
+    enc_mode = pjmedia_codec_amr_get_mode(attr->info.avg_bps); /* mode-set */
     pj_assert(enc_mode >= 0 && (unsigned)enc_mode < amr_bitrates_size[idx]);
 
     /* Check octet-align */
@@ -751,6 +1066,338 @@ static pj_status_t amr_codec_open( pjmedia_codec *codec,
                        " bitrate=%d", amr_data->clock_rate,
                         amr_data->vad_enabled, amr_data->plc_enabled, 
                         amr_bitrates[idx][amr_data->enc_mode]));
+    return PJ_SUCCESS;
+}
+
+/*
+ * Open EVS codec.
+ */
+static pj_status_t evs_codec_open( pjmedia_codec *codec, 
+                                   pjmedia_codec_param *attr )
+{
+    struct evs_data *evs_data = (struct evs_data*) codec->codec_data;
+    evs_attr *setting;
+    unsigned i;
+    pj_uint8_t octet_align = 0;
+    pj_int8_t  enc_mode;
+    const pj_str_t STR_FMTP_OCTET_ALIGN = {"octet-align", 11};
+    const pj_str_t STR_FMTP_EVS_CH_AW = {"ch-aw-recv", 10};
+    const pj_str_t STR_FMTP_EVS_MODE_SWITCH = {"evs-mode-switch", 15};
+    const pj_str_t STR_FMTP_EVS_HF_ONLY = {"hf-only", 7};
+    const pj_str_t STR_FMTP_EVS_DTX = {"dtx", 3};
+    const pj_str_t STR_FMTP_EVS_DTX_RECV = {"dtx-recv", 8};
+    const pj_str_t STR_FMTP_EVS_MAX_RED = {"max-red", 7};
+    const pj_str_t STR_FMTP_EVS_CMR = {"cmr", 3};
+    const pj_str_t STR_FMTP_EVS_CH_SEND = {"ch-send", 7};
+    const pj_str_t STR_FMTP_EVS_CH_RECV = {"ch-recv", 7};
+    const pj_str_t STR_FMTP_EVS_BR = {"br", 2};
+    const pj_str_t STR_FMTP_EVS_BR_SEND = {"br-send", 7};
+    const pj_str_t STR_FMTP_EVS_BR_RECV = {"br-recv", 7};
+    const pj_str_t STR_FMTP_EVS_BW = {"bw", 2};
+    const pj_str_t STR_FMTP_EVS_BW_SEND = {"br-send", 7};
+    const pj_str_t STR_FMTP_EVS_BW_RECV = {"br-recv", 7};
+    const pj_str_t STR_FMTP_EVS_MODE_SET = {"mode-set", 8};
+    const pj_str_t STR_FMTP_EVS_MODE_CHANGE_PERIOD = {"mode-change-period", 18};
+    const pj_str_t STR_FMTP_EVS_MODE_CHANGE_NEIGHBOR = {"mode-change-neighbor", 20};
+    unsigned idx;
+
+    PJ_ASSERT_RETURN(codec && attr, PJ_EINVAL);
+    PJ_ASSERT_RETURN(evs_data != NULL, PJ_EINVALIDOP);
+    const unsigned int sample_rate = attr->info.clock_rate; // EVS sample rate
+    const int channel_aware ;  /* EVS Channel aware  */
+	const unsigned int dtx_on ;
+	pj_uint8_t amr_wb  =  0;
+	const int max_bandwidth; /* WB matches all bit-rates */
+	int bit_rate_evs ; /* 16.4 is available in all bandwidths */
+	int bit_rate_amr;
+    idx = (attr->info.clock_rate <= 8000? IDX_AMR_NB: IDX_AMR_WB);
+    enc_mode = pjmedia_codec_amr_get_mode(attr->info.avg_bps);
+    pj_assert(enc_mode >= 0 && (unsigned)enc_mode < amr_bitrates_size[idx]);
+
+    /* Check  evs-mode-switch */
+    setting->evs_mode_switch = -1;
+    for (i = 0; i < attr->setting.dec_fmtp.cnt; ++i) {
+        if (pj_stricmp(&attr->setting.dec_fmtp.param[i].name, 
+                       &STR_FMTP_EVS_MODE_SWITCH) == 0)
+        {
+            setting->evs_mode_switch = (pj_uint8_t)
+                          (pj_strtoul(&attr->setting.dec_fmtp.param[i].val));
+            break;
+        }
+    }
+
+    /* Check  hf-only */
+    setting->hf_only = -1;
+    for (i = 0; i < attr->setting.dec_fmtp.cnt; ++i) {
+        if (pj_stricmp(&attr->setting.dec_fmtp.param[i].name, 
+                       &STR_FMTP_EVS_HF_ONLY) == 0)
+        {
+            setting->hf_only = (pj_uint8_t)
+                          (pj_strtoul(&attr->setting.dec_fmtp.param[i].val));
+            break;
+        }
+    }
+
+    /* Check  dtx */
+    setting->dtx = 2;
+    for (i = 0; i < attr->setting.dec_fmtp.cnt; ++i) {
+        if (pj_stricmp(&attr->setting.dec_fmtp.param[i].name, 
+                       &STR_FMTP_EVS_DTX) == 0)
+        {
+            setting->dtx = (pj_uint8_t)
+                          (pj_strtoul(&attr->setting.dec_fmtp.param[i].val));
+            break;
+        }
+    }
+
+     /* Check  dtx-recv */
+    setting->dtx_recv = 2;
+    for (i = 0; i < attr->setting.dec_fmtp.cnt; ++i) {
+        if (pj_stricmp(&attr->setting.dec_fmtp.param[i].name, 
+                       &STR_FMTP_EVS_DTX_RECV) == 0)
+        {
+            setting->dtx_recv = (pj_uint8_t)
+                          (pj_strtoul(&attr->setting.dec_fmtp.param[i].val));
+            break;
+        }
+    }
+
+    /* Check  max-red */
+    setting->max_red = -1;
+    for (i = 0; i < attr->setting.dec_fmtp.cnt; ++i) {
+        if (pj_stricmp(&attr->setting.dec_fmtp.param[i].name, 
+                       &STR_FMTP_EVS_MAX_RED) == 0)
+        {
+            setting->max_red = (pj_uint8_t)
+                          (pj_strtoul(&attr->setting.dec_fmtp.param[i].val));
+            break;
+        }
+    }
+
+    /* Check  cmr */
+    setting->cmr = 0;
+    for (i = 0; i < attr->setting.dec_fmtp.cnt; ++i) {
+        if (pj_stricmp(&attr->setting.dec_fmtp.param[i].name, 
+                       &STR_FMTP_EVS_CMR) == 0)
+        {
+            setting->cmr = (pj_uint8_t)
+                          (pj_strtoul(&attr->setting.dec_fmtp.param[i].val));
+            break;
+        }
+    }
+
+        /* Check  ch-send */
+    setting->ch_send = 0;
+    for (i = 0; i < attr->setting.dec_fmtp.cnt; ++i) {
+        if (pj_stricmp(&attr->setting.dec_fmtp.param[i].name, 
+                       &STR_FMTP_EVS_CH_SEND) == 0)
+        {
+            setting->ch_send = (pj_uint8_t)
+                          (pj_strtoul(&attr->setting.dec_fmtp.param[i].val));
+            break;
+        }
+    }
+       /* Check  ch-recv */
+    setting->ch_recv = 0;
+
+    for (i = 0; i < attr->setting.dec_fmtp.cnt; ++i) {
+        if (pj_stricmp(&attr->setting.dec_fmtp.param[i].name, 
+                       &STR_FMTP_EVS_CH_RECV) == 0)
+        {
+            setting->ch_recv = (pj_uint8_t)
+                          (pj_strtoul(&attr->setting.dec_fmtp.param[i].val));
+            break;
+        }
+    }
+    /* Check  ch-aw */
+    setting->ch_aw_send = 0;
+    setting->ch_aw_recv = -2;
+    for (i = 0; i < attr->setting.dec_fmtp.cnt; ++i) {
+        if (pj_stricmp(&attr->setting.dec_fmtp.param[i].name, 
+                       &STR_FMTP_EVS_CH_RECV) == 0)
+        {
+            setting->ch_aw_send = (pj_uint8_t)
+                          (pj_strtoul(&attr->setting.dec_fmtp.param[i].val));
+            break;
+        }
+    }
+
+
+    /* Check  br */
+    setting->br = 0;
+    setting->br_recv =  0x1ffe; /* all bit-rates */
+    setting->br_send =  0x1ffe; /* all bit-rates */
+    float br1 = 0;
+	float br2 = 0;
+    for (i = 0; i < attr->setting.dec_fmtp.cnt; ++i) {
+        if (pj_stricmp(&attr->setting.dec_fmtp.param[i].name, 
+                       &STR_FMTP_EVS_BR) == 0)
+        {
+            get_floats(attr->setting.dec_fmtp.param[i].val, &br1, &br2);
+            setting->br_recv = evs_parse_sdp_fmtp_br(br1, br2);
+            setting->br_send = evs_parse_sdp_fmtp_br(br1,br2);
+            setting->br = 0;
+            break;
+        }
+    }
+
+    /* Check  br-send */
+    for (i = 0; i < attr->setting.dec_fmtp.cnt; ++i) {
+        if (pj_stricmp(&attr->setting.dec_fmtp.param[i].name, 
+                       &STR_FMTP_EVS_BR_SEND) == 0)
+        {
+            get_floats(attr->setting.dec_fmtp.param[i].val, &br1, &br2);
+            setting->br_recv = evs_parse_sdp_fmtp_br(br1, br2);
+            setting->br_recv |= 0x0001;
+            break;
+        }
+    }
+
+     /* Check  br-recv */
+    for (i = 0; i < attr->setting.dec_fmtp.cnt; ++i) {
+        if (pj_stricmp(&attr->setting.dec_fmtp.param[i].name, 
+                       &STR_FMTP_EVS_BR_RECV) == 0)
+        {
+            get_floats(attr->setting.dec_fmtp.param[i].val, &br1, &br2);
+            setting->br_send = evs_parse_sdp_fmtp_br(br1, br2);
+            setting->br_send |= 0x0001;
+            break;
+        }
+    }
+
+    /* Check  bw */
+    setting->bw = 0;
+    setting->bw_recv = 0x1e; /* all bandwidths (nb-fb) */
+    setting->bw_send = 0x1e; /* all bandwidths (nb-fb) */
+    for (i = 0; i < attr->setting.dec_fmtp.cnt; ++i) {
+            if (pj_stricmp(&attr->setting.dec_fmtp.param[i].name, 
+                        &STR_FMTP_EVS_BW) == 0)
+            {
+                setting->bw_recv  = evs_parse_sdp_fmtp_bw(attr->setting.dec_fmtp.param[i].val);
+                setting->bw_send  = evs_parse_sdp_fmtp_bw(attr->setting.dec_fmtp.param[i].val);
+                setting->bw = 1;
+                break;
+            }
+        }
+
+    for (i = 0; i < attr->setting.dec_fmtp.cnt; ++i) {
+            if (pj_stricmp(&attr->setting.dec_fmtp.param[i].name, 
+                        &STR_FMTP_EVS_BW_SEND) == 0)
+            {
+                setting->bw_recv  = evs_parse_sdp_fmtp_bw(attr->setting.dec_fmtp.param[i].val);
+                setting->bw_recv  |= 0x0001;
+                break;
+            }
+        }
+
+    for (i = 0; i < attr->setting.dec_fmtp.cnt; ++i) {
+                if (pj_stricmp(&attr->setting.dec_fmtp.param[i].name, 
+                            &STR_FMTP_EVS_BW_RECV) == 0)
+                {
+                    setting->bw_send  = evs_parse_sdp_fmtp_bw(attr->setting.dec_fmtp.param[i].val);
+                    setting->bw_send  |= 0x0001;
+                    break;
+                }
+            }
+
+    /* Check mode-change-period */
+    for (i = 0; i < attr->setting.dec_fmtp.cnt; ++i) {
+        if (pj_stricmp(&attr->setting.dec_fmtp.param[i].name, 
+                       &STR_FMTP_EVS_MODE_CHANGE_PERIOD) == 0)
+        {
+            setting->mode_change_period = (pj_uint8_t)
+                          (pj_strtoul(&attr->setting.dec_fmtp.param[i].val));
+            break;
+        }
+    }
+
+     /* Check mode-change-neighbor */
+    for (i = 0; i < attr->setting.dec_fmtp.cnt; ++i) {
+        if (pj_stricmp(&attr->setting.dec_fmtp.param[i].name, 
+                       &STR_FMTP_EVS_MODE_CHANGE_NEIGHBOR) == 0)
+        {
+            setting->mode_change_neighbor = (pj_uint8_t)
+                          (pj_strtoul(&attr->setting.dec_fmtp.param[i].val));
+            break;
+        }
+    }
+
+    /* Check mode-set */
+    setting->mode_set = 0;
+    for (i = 0; i < attr->setting.enc_fmtp.cnt; ++i) {
+        
+        if (pj_stricmp(&attr->setting.enc_fmtp.param[i].name, 
+                       &STR_FMTP_EVS_MODE_SET) == 0)
+        {
+            const char *p;
+            pj_size_t l;
+            pj_int8_t diff = 99;
+
+            /* Encoding mode is chosen based on local default mode setting:
+             * - if local default mode is included in the mode-set, use it
+             * - otherwise, find the closest mode to local default mode;
+             *   if there are two closest modes, prefer to use the higher
+             *   one, e.g: local default mode is 4, the mode-set param
+             *   contains '2,3,5,6', then 5 will be chosen.
+             */
+            p = pj_strbuf(&attr->setting.enc_fmtp.param[i].val);
+            l = pj_strlen(&attr->setting.enc_fmtp.param[i].val);
+            while (l--) {
+                if (*p>='0' && *p<=('9')) {
+                    pj_int8_t tmp = *p - '0';
+                    setting ->mode_set = (setting->mode_set | 1 <<tmp );
+                    setting->mode_current = tmp;     
+                }
+                ++p;
+            }
+            break;
+        }
+    }
+
+
+
+    evs_data->clock_rate = attr->info.clock_rate;
+    evs_data->vad_enabled = (attr->setting.vad != 0);
+    evs_data->plc_enabled = (attr->setting.plc != 0);
+    evs_data->enc_mode = enc_mode;
+//TO DO 
+    if (idx == IDX_AMR_NB) {
+#ifdef USE_AMRNB
+        evs_data->encoder = Encoder_Interface_init(evs_data->vad_enabled);
+#endif
+    } else {
+#ifdef USE_AMRWB
+        evs_data->encoder = E_IF_init();
+#endif
+    }
+    if (evs_data->encoder == NULL) {
+        TRACE_((THIS_FILE, "Encoder initialization failed"));
+        amr_codec_close(codec);
+        return PJMEDIA_CODEC_EFAILED;
+    }
+    setting = &evs_data->enc_setting;
+    pj_bzero(setting, sizeof(pjmedia_codec_amr_pack_setting));
+    if (idx == IDX_AMR_NB) {
+#ifdef USE_AMRNB
+        evs_data->decoder = Decoder_Interface_init();
+#endif
+    } else {
+#ifdef USE_AMRWB
+        evs_data->decoder = D_IF_init();
+#endif
+    }
+    if (evs_data->decoder == NULL) {
+        TRACE_((THIS_FILE, "Decoder initialization failed"));
+        amr_codec_close(codec);
+        return PJMEDIA_CODEC_EFAILED;
+    }
+    setting = &evs_data->dec_setting;
+    pj_bzero(setting, sizeof(pjmedia_codec_amr_pack_setting));
+
+    TRACE_((THIS_FILE, "AMR codec allocated: clockrate=%d vad=%d, plc=%d,"
+                       " bitrate=%d", evs_data->clock_rate,
+                        evs_data->vad_enabled, evs_data->plc_enabled, 
+                        amr_bitrates[idx][evs_data->enc_mode]));
     return PJ_SUCCESS;
 }
 

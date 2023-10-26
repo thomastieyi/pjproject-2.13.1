@@ -1,0 +1,49 @@
+
+
+PJSYSTEST Report
+Time: 2023/10/15 13:04:57
+Tests invoked: 2
+-----------------------------------------------
+
+TEST 0: Audio Device Test Success
+Here are the audio statistics:
+Rec : interval (min/max/avg/dev)=
+         20/20/20/0 (ms)
+      max burst=1
+Play: interval (min/max/avg/dev)=
+         20/20/20/0 (ms)
+      burst=1
+
+The sound device seems to be okay!
+
+TEST 1: Audio Device List Success
+Found 32 devices
+  0: ALSA [default] (1/1)
+  1: ALSA [surround21] (0/0)
+  2: ALSA [surround40] (0/0)
+  3: ALSA [surround41] (0/0)
+  4: ALSA [surround50] (0/0)
+  5: ALSA [surround51] (0/0)
+  6: ALSA [surround71] (0/0)
+  7: ALSA [samplerate] (0/0)
+  8: ALSA [speexrate] (0/0)
+  9: ALSA [jack] (0/0)
+ 10: ALSA [oss] (0/0)
+ 11: ALSA [pulse] (1/1)
+ 12: ALSA [upmix] (0/0)
+ 13: ALSA [vdownmix] (0/0)
+ 14: ALSA [hdmi:CARD=NVidia,DEV=0] (0/1)
+ 15: ALSA [hdmi:CARD=NVidia,DEV=1] (0/1)
+ 16: ALSA [hdmi:CARD=NVidia,DEV=2] (0/0)
+ 17: ALSA [hdmi:CARD=NVidia,DEV=3] (0/1)
+ 18: ALSA [hdmi:CARD=NVidia,DEV=4] (0/1)
+ 19: ALSA [hdmi:CARD=NVidia,DEV=5] (0/1)
+ 20: ALSA [hdmi:CARD=NVidia,DEV=6] (0/1)
+ 21: ALSA [dmix:CARD=NVidia,DEV=3] (0/1)
+ 22: ALSA [dmix:CARD=NVidia,DEV=7] (0/1)
+ 23: ALSA [dmix:CARD=NVidia,DEV=8] (0/0)
+ 24: ALSA [dmix:CARD=NVidia,DEV=9] (0/1)
+ 25: ALSA [dmix:CARD=NVidia,DEV=10] (0/1)
+ 26: ALSA [dmix:CARD=NVidia,DEV=11] (0/1)
+ 27: ALSA [dmix:CARD=NVidia,DEV=12] (0/1)
+ 28: ALSA [dsnoop:CARD=

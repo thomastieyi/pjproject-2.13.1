@@ -624,6 +624,20 @@ typedef struct pjmedia_codec_amr_pack_setting {
                                      encoder.                           */
 } pjmedia_codec_amr_pack_setting;
 
+/**
+ * This structure describes AMR settings.
+ */
+typedef struct pjmedia_codec_amr_pack_setting {
+    pj_uint8_t amr_nb:1;        /**< Set 1 for AMR-NB, 0 for AMR-WB.    */
+    pj_uint8_t reorder:1;       /**< Reorder bitstream into descending 
+                                     sensitivity order or vice versa.   */
+    pj_uint8_t octet_aligned:1; /**< TRUE if payload is in octet-aligned mode,
+                                     FALSE if payload is in bandwidth 
+                                     efficient mode.                    */
+    pj_uint8_t cmr:4;           /**< Change Mode Request for remote
+                                     encoder.                           */
+} pjmedia_codec_evs_pack_setting;
+
 
 /**
  * Get AMR mode based on bitrate.

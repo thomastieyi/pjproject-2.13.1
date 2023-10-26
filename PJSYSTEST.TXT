@@ -1,0 +1,56 @@
+13:04:09.249         sip_endpoint.c !.Module "mod-pjsua-log" registered
+13:04:09.249         sip_endpoint.c  .Module "mod-tsx-layer" registered
+13:04:09.249         sip_endpoint.c  .Module "mod-stateful-util" registered
+13:04:09.249         sip_endpoint.c  .Module "mod-ua" registered
+13:04:09.249         sip_endpoint.c  .Module "mod-100rel" registered
+13:04:09.249         sip_endpoint.c  .Module "mod-pjsua" registered
+13:04:09.249         sip_endpoint.c  .Module "mod-invite" registered
+13:04:09.265             alsa_dev.c  ..Added sound device default
+13:04:09.266             alsa_dev.c  ..Added sound device surround21
+13:04:09.266             alsa_dev.c  ..Added sound device surround40
+13:04:09.266             alsa_dev.c  ..Added sound device surround41
+13:04:09.266             alsa_dev.c  ..Added sound device surround50
+13:04:09.266             alsa_dev.c  ..Added sound device surround51
+13:04:09.266             alsa_dev.c  ..Added sound device surround71
+13:04:09.266             alsa_dev.c  ..Added sound device samplerate
+13:04:09.266             alsa_dev.c  ..Added sound device speexrate
+13:04:09.274             alsa_dev.c  ..Added sound device jack
+13:04:09.274             alsa_dev.c  ..Added sound device oss
+13:04:09.274             alsa_dev.c  ..Added sound device pulse
+13:04:09.275             alsa_dev.c  ..Added sound device upmix
+13:04:09.275             alsa_dev.c  ..Added sound device vdownmix
+13:04:09.276             alsa_dev.c  ..Added sound device hdmi:CARD=NVidia,DEV=0
+13:04:09.276             alsa_dev.c  ..Added sound device hdmi:CARD=NVidia,DEV=1
+13:04:09.276             alsa_dev.c  ..Added sound device hdmi:CARD=NVidia,DEV=2
+13:04:09.276             alsa_dev.c  ..Added sound device hdmi:CARD=NVidia,DEV=3
+13:04:09.276             alsa_dev.c  ..Added sound device hdmi:CARD=NVidia,DEV=4
+13:04:09.276             alsa_dev.c  ..Added sound device hdmi:CARD=NVidia,DEV=5
+13:04:09.276             alsa_dev.c  ..Added sound device hdmi:CARD=NVidia,DEV=6
+13:04:09.312             alsa_dev.c  ..Added sound device dmix:CARD=NVidia,DEV=3
+13:04:09.324             alsa_dev.c  ..Added sound device dmix:CARD=NVidia,DEV=7
+13:04:09.324             alsa_dev.c  ..Added sound device dmix:CARD=NVidia,DEV=8
+13:04:09.324             alsa_dev.c  ..Added sound device dmix:CARD=NVidia,DEV=9
+13:04:09.324             alsa_dev.c  ..Added sound device dmix:CARD=NVidia,DEV=10
+13:04:09.325             alsa_dev.c  ..Added sound device dmix:CARD=NVidia,DEV=11
+13:04:09.325             alsa_dev.c  ..Added sound device dmix:CARD=NVidia,DEV=12
+13:04:09.325             alsa_dev.c  ..Added sound device dsnoop:CARD=NVidia,DEV=3
+13:04:09.325             alsa_dev.c  ..Added sound device dsnoop:CARD=NVidia,DEV=7
+13:04:09.325             alsa_dev.c  ..Added sound device dsnoop:CARD=NVidia,DEV=8
+13:04:09.326             alsa_dev.c  ..Added sound device dsnoop:CARD=NVidia,DEV=9
+13:04:09.327             alsa_dev.c  ..ALSA driver found 32 devices
+13:04:09.327             alsa_dev.c  ..ALSA initialized
+13:04:09.327                  pjlib  ..select() I/O Queue created (0x5620d3789238)
+13:04:09.327           conference.c  ..Creating conference bridge with 254 ports
+13:04:09.327           Master/sound  ..Using delay buffer with WSOLA.
+13:04:09.328         sip_endpoint.c  .Module "mod-evsub" registered
+13:04:09.328         sip_endpoint.c  .Module "mod-presence" registered
+13:04:09.328                evsub.c  .Event pkg "presence" registered by mod-presence
+13:04:09.328         sip_endpoint.c  .Module "mod-mwi" registered
+13:04:09.328                evsub.c  .Event pkg "message-summary" registered by mod-mwi
+13:04:09.328         sip_endpoint.c  .Module "mod-refer" registered
+13:04:09.328                evsub.c  .Event pkg "refer" registered by mod-refer
+13:04:09.328         sip_endpoint.c  .Module "mod-pjsua-pres" registered
+13:04:09.328         sip_endpoint.c  .Module "mod-pjsua-im" registered
+13:04:09.328         sip_endpoint.c  .Module "mod-pjsua-options" registered
+13:04:09.328           pjsua_core.c  .1 SIP worker threads created
+13:04:09.328           pjsu
